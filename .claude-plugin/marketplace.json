@@ -1,0 +1,17 @@
+{
+  "name": "product-walkthrough-skill",
+  "owner": { "name": "Abdul Hadi", "url": "https://github.com/AbdulHadi404" },
+  "metadata": {
+    "description": "Claude Code skill for screenshot-based product walkthrough guides — one PDF per audience, generated from the running app.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "product-walkthrough",
+      "source": "./",
+      "description": "Scope → safe local environment → API seed → puppeteer capture with callouts → plain-language writing → A4 PDF build → page review → delivery, with the generator committed for reruns.",
+      "version": "1.0.0",
+      "keywords": ["walkthrough", "user-guide", "documentation", "pdf"]
+    }
+  ]
+}

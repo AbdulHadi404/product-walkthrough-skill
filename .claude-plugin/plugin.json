@@ -1,0 +1,10 @@
+{
+  "name": "product-walkthrough",
+  "description": "Screenshot-based, plain-language walkthrough guides (PDF + HTML) of a web product, one per audience: seed believable data through the app's API, capture every screen with numbered callouts, write for a mixed non-technical audience, build A4 PDFs, review page sheets, commit the generator so guides can be regenerated after UI changes.",
+  "version": "1.0.0",
+  "author": { "name": "Abdul Hadi", "url": "https://github.com/AbdulHadi404" },
+  "homepage": "https://github.com/AbdulHadi404/product-walkthrough-skill",
+  "repository": "https://github.com/AbdulHadi404/product-walkthrough-skill",
+  "license": "MIT",
+  "keywords": ["walkthrough", "user-guide", "documentation", "screenshots", "pdf", "onboarding", "puppeteer", "stakeholders"]
+}

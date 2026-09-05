@@ -1,0 +1,9 @@
+{
+  "name": "product-walkthrough-generator",
+  "private": true,
+  "type": "module",
+  "description": "Capture + PDF build scripts for product walkthrough guides (copy into <repo>/scripts/walkthrough)",
+  "dependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}

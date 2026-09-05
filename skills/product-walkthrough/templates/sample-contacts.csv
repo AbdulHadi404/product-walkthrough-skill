@@ -1,0 +1,9 @@
+First Name,Last Name,Phone Number,Email
+Liam,Carter,(415) 555-0910,liam.carter@example.com
+Noah,Brooks,415-555-0911,noah.brooks@example.com
+Emma,Hayes,+1 415 555 0912,emma.hayes@example.com
+Olivia,Reed,4155550913,olivia.reed@example.com
+Ava,Morgan,(212) 555-0914,ava.morgan@example.com
+Ethan,Cole,+1 650 555 0915,ethan.cole@example.com
+Liam,Carter,14155550910,duplicate.of.row.1@example.com
+Bad,Number,12345,bad.number@example.com
