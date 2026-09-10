@@ -200,7 +200,10 @@ const html = `<!doctype html>
   .tips h3 { margin:0 0 .3em; color:#166534; }
   ul.tiplist { margin:0; padding-left:1.2em; }
   ul.tiplist li { margin:0 0 .3em; }
-  table.plain { border-collapse:collapse; width:100%; font-size:10.5pt; margin:8px 0 12px; break-inside:avoid; }
+  /* A table breaks between rows, never inside one: a long table kept whole would push itself to the next page and leave its heading alone. */
+  table.plain { border-collapse:collapse; width:100%; font-size:10.5pt; margin:8px 0 12px; break-inside:auto; }
+  table.plain tr { break-inside:avoid; }
+  table.plain thead { display:table-header-group; }
   table.plain th, table.plain td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
   table.plain th { font-size:9pt; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
   .glossary dt { font-weight:700; margin-top:.6em; }
