@@ -127,10 +127,14 @@ export async function createKit({
     });
   }
 
-  /** Screenshot + callout boxes → manifest. `full` captures the whole document. */
-  async function shot(page, name, { full = false, callouts = [] } = {}) {
+  /** Screenshot + callout boxes → manifest. `full` captures the whole document;
+   *  `focus` (a selector) scrolls that element to the middle of the viewport
+   *  first, for a viewport-sized shot of something below the fold. */
+  async function shot(page, name, { full = false, callouts = [], focus = null } = {}) {
     await page.addStyleTag({ content: hideCss }).catch(() => {});
-    await page.evaluate(() => window.scrollTo(0, 0));
+    const target = focus && !full ? await resolve(page, focus) : null;
+    if (target) await target.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    else await page.evaluate(() => window.scrollTo(0, 0));
     await sleep(250);
     const boxes = [];
     for (const c of callouts) {
@@ -139,10 +143,17 @@ export async function createKit({
         console.warn(`  ! callout ${c.n} missing on ${name}: ${c.sel}`);
         continue;
       }
-      const b = await h.evaluate((el) => {
+      // Viewport coordinates for a viewport shot; document coordinates for a
+      // full-page one (which is always taken from the top).
+      const b = await h.evaluate((el, full) => {
         const r = el.getBoundingClientRect();
-        return { x: r.left + window.scrollX, y: r.top + window.scrollY, w: r.width, h: r.height };
-      });
+        return {
+          x: r.left + (full ? window.scrollX : 0),
+          y: r.top + (full ? window.scrollY : 0),
+          w: r.width,
+          h: r.height,
+        };
+      }, full);
       boxes.push({ n: c.n, ...b });
     }
     const file = `${name}.jpg`;
@@ -155,9 +166,14 @@ export async function createKit({
       full,
     );
     const entry = { name, file, ...dims, callouts: boxes };
-    const i = manifest.findIndex((m) => m.name === name);
-    if (i >= 0) manifest[i] = entry;
-    else manifest.push(entry);
+    // Read-merge-write, not write-from-memory: several kits (a laptop, a
+    // phone, a tablet) can share one shots directory, and each must add to
+    // the manifest the others are writing rather than replace it.
+    const current = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : [];
+    const i = current.findIndex((m) => m.name === name);
+    if (i >= 0) current[i] = entry;
+    else current.push(entry);
+    manifest.splice(0, manifest.length, ...current);
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     console.log('shot', name, boxes.length ? `(${boxes.length} callouts)` : '');
   }

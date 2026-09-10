@@ -59,6 +59,8 @@ Copy `scripts/capture-kit.mjs` and write `scenes.mjs` (start from `templates/sce
 
 One content module per guide. Structure: cover → "what it does in one minute" + the journey → contents → parts (one per menu area) → one section per screen → appendix (glossary, quick answers, status tables). Every section: a two-sentence summary, the screenshot with its legend, "How to do it" steps, "Good to know" tips, optional tables of statuses. The audience rules (sentence length, defined terms, chips for button names, what never to say) are in `references/writing.md` — read it before writing the first section; rewriting fifty sections later is the expensive path.
 
+**Theme.** The guide wears the product's colours, not the template's. Read the app's design tokens (the primary/accent colour, a soft tint of it, the ink; a brand orange, a brand green, whatever it is) and set `theme` in the content module — `accent` and `accentSoft` at the least. The badges, eyebrows, part dividers, pills and journey tiles all take it. Leave the "Good to know" green unless the brand has its own success colour. A guide left in the template's indigo reads as another company's document.
+
 ### Phase 6 — Build and review
 
 `python3 shrink.py` (1.5× JPEGs keep the PDF light), `node build.mjs content.mjs OUT-NAME`, then render every page at 50 dpi with `pdftoppm` and tile them into contact sheets (`scripts/contact-sheet.py`). Look for: a page holding only a "Good to know" box, a table split across pages, a legend whose numbers skip, the table of contents overflowing into the first part divider, a tall form screenshot squeezed unreadably. Fix the CSS or the content, rebuild, look again. Finish with `pdftotext … | grep -i` for the forbidden-word list of each guide. Layout decisions and the defect catalogue: `references/layout-and-review.md`.
@@ -77,7 +79,9 @@ A stakeholder who has never seen the product should be able to open the customer
 - A page's first compile in a dev server can exceed a minute; wait up to 90 s, then reload once before giving up.
 - Simulated backends fail some actions on purpose (a mock carrier refusing 15 % of dials); wrap those clicks in a retry.
 - "Running" is not "live": a job with only pending retries shows nothing in a live view. Start a fresh one just before capturing live screens.
-- Write the manifest after every screenshot, not at the end; a crash at screen 40 must not lose 39 callout maps.
+- Write the manifest after every screenshot, not at the end; a crash at screen 40 must not lose 39 callout maps. The kit also read-merges it, so several kits (a laptop, a phone, a tablet) can share one shots directory without the last one to close overwriting the others.
+- A viewport shot of something below the fold: pass `focus: "<selector>"` to `shot`; the kit scrolls it to the middle first and records viewport coordinates. Full-page shots are always taken from the top.
+- Badges sit just left of the element they mark, level with its first line, so they never cover the words; tall figures are capped at 160 mm so a section's heading, figure and legend share a page — a heading alone with its picture overleaf was the commonest layout defect.
 - Feature switches that ship "off" in a fresh database (a platform-wide dialing switch) silently empty half the guide; check them in Phase 2.
 - Dev overlays (Next.js's `nextjs-portal`) render into screenshots; hide them with an injected style before every shot.
 - The same screenshot serves both guides only when both audiences see exactly the same thing; an admin acting inside a customer workspace has an extra switcher in the top bar, so capture it separately.

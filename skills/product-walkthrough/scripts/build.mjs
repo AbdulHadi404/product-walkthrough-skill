@@ -14,6 +14,21 @@ const OUT_DIR = path.resolve(process.env.WALKTHROUGH_OUT ?? '.');
 const SHOTS = path.join(S, 'shots');
 const [, , contentPath, outBase] = process.argv;
 const doc = (await import(path.resolve(contentPath))).default;
+
+// The guide wears the product's colours, not the template's. `theme` in the
+// content module overrides any of these; the defaults are a neutral slate
+// with a green "good to know" box, and the accent is the one to change.
+const theme = {
+  ink: '#0f172a',
+  ink2: '#334155',
+  muted: '#64748b',
+  line: '#e2e8f0',
+  accent: '#4f46e5',
+  accentSoft: '#eef2ff',
+  tip: '#f0fdf4',
+  tipLine: '#86efac',
+  ...(doc.theme ?? {}),
+};
 const manifest = Object.fromEntries(
   JSON.parse(fs.readFileSync(path.join(SHOTS, 'manifest.json'), 'utf8')).map((m) => [m.name, m]),
 );
@@ -47,10 +62,12 @@ function figure(shot) {
       const n = i + 1;
       const box = m.callouts.find((c) => c.n === n);
       if (!box) return '';
-      // badge sits at the top-left corner of the element, nudged inward
-      const cx = ((box.x + Math.min(14, box.w / 2)) / m.w) * 100;
-      const cy = ((box.y + Math.min(14, box.h / 2)) / m.h) * 100;
-      return `<span class="badge" style="left:${cx.toFixed(2)}%;top:${cy.toFixed(2)}%">${n}</span>`;
+      // The badge sits just left of the element, level with its first line,
+      // so it never covers the words it points at. Where the element starts
+      // at the very edge it hangs half outside the frame — the frame lets it.
+      const cx = ((box.x / m.w) * 100).toFixed(2);
+      const cy = (((box.y + Math.min(14, box.h / 2)) / m.h) * 100).toFixed(2);
+      return `<span class="badge" style="left:calc(${cx}% - 13px);top:${cy}%">${n}</span>`;
     })
     .join('');
   const ratio = m.h / m.w;
@@ -117,7 +134,7 @@ const html = `<!doctype html>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
   @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
-  :root { --ink:#0f172a; --ink2:#334155; --muted:#64748b; --line:#e2e8f0; --accent:#4f46e5; --accent-soft:#eef2ff; --tip:#f0fdf4; --tip-line:#86efac; }
+  :root { --ink:${theme.ink}; --ink2:${theme.ink2}; --muted:${theme.muted}; --line:${theme.line}; --accent:${theme.accent}; --accent-soft:${theme.accentSoft}; --tip:${theme.tip}; --tip-line:${theme.tipLine}; }
   * { box-sizing:border-box; }
   html, body { margin:0; padding:0; }
   body { font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color:var(--ink); font-size:11.5pt; line-height:1.55; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
@@ -164,10 +181,13 @@ const html = `<!doctype html>
   /* screens */
   .screen { break-before:page; }
   figure.shot { margin:6px 0 8px; break-inside:avoid; }
-  .frame { position:relative; width:88%; margin:0 auto; border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; background:#fff; box-shadow:0 1px 2px rgba(15,23,42,.06); }
-  .frame img { display:block; width:100%; height:100%; }
-  figure.tall .frame { max-height:200mm; width:auto; max-width:100%; margin:0 auto; }
-  figure.tall .frame img { max-height:200mm; width:auto; }
+  .frame { position:relative; width:88%; margin:0 auto; border:1px solid #cbd5e1; border-radius:8px; overflow:visible; background:#fff; box-shadow:0 1px 2px rgba(15,23,42,.06); }
+  .frame img { display:block; width:100%; height:100%; border-radius:7px; }
+  /* 160mm leaves room on the same page for the heading above and the legend
+     below — a heading alone on a page, with its picture overleaf, is the
+     layout fault this guards against. */
+  figure.tall .frame { max-height:160mm; width:auto; max-width:100%; margin:0 auto; }
+  figure.tall .frame img { max-height:160mm; width:auto; }
   .badge { position:absolute; transform:translate(-50%,-50%); width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-weight:800; font-size:11px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2.5px #fff, 0 2px 6px rgba(0,0,0,.35); }
   figcaption { font-size:9.5pt; color:var(--muted); margin-top:5px; text-align:center; }
   ol.legend { list-style:none; padding:0; margin:8px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:4px 18px; }
@@ -217,7 +237,7 @@ const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'] 
 const page = await browser.newPage();
 await page.goto('file://' + htmlOut, { waitUntil: 'networkidle0', timeout: 120000 });
 await page.evaluate(() => document.fonts.ready);
-const footer = `<div style="font-family:Inter,Arial,sans-serif;font-size:8pt;color:#64748b;width:100%;padding:0 16mm;display:flex;justify-content:space-between;">
+const footer = `<div style="font-family:Inter,Arial,sans-serif;font-size:8pt;color:${theme.muted};width:100%;padding:0 16mm;display:flex;justify-content:space-between;">
   <span>${esc(doc.title)}</span><span><span class="pageNumber"></span> / <span class="totalPages"></span></span></div>`;
 await page.pdf({
   path: path.join(OUT_DIR, `${outBase}.pdf`),

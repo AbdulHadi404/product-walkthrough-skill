@@ -6,13 +6,17 @@
 
 - **A4, 16 mm side margins, 11.5 pt body, Inter with system fallbacks.** Large enough for older readers on paper; fits one screen with legend, steps and tips on one page most of the time.
 - **One section per page** (`break-before: page`). Readers open the guide at a screen; a page that starts mid-section is disorienting.
-- **Screenshot at 88 % of the text width**, centred, thin border, badges as 22 px indigo circles with a white ring. Full-page (tall) screenshots are capped at 200 mm high and centred; they are overviews, not something to read.
+- **Screenshot at 88 % of the text width**, centred, thin border, badges as 22 px accent-coloured circles with a white ring, placed just left of the element so they cover no words. Full-page (tall) screenshots are capped at 160 mm so the heading, the figure and its legend share a page.
 - **Legend in two columns, three when seven or more callouts.** Keeps the figure and its legend on the same page.
 - **Order inside a section**: summary → figure(s) → steps → tables → tips. Tables come before the tips box so a status table never dangles after it; both are `break-inside: avoid`.
 - **Contents on its own page** after the overview; otherwise the last contents row spills into a near-empty page before the first part divider.
 - **Part dividers** are soft-tinted panels with the part number, title, one-sentence summary and section list — a deliberate pause, not an accidental blank page.
 - **Chips** for UI labels: `[[Label]]` in steps, tips, legends, summaries, raw HTML blocks and the appendix.
 - **Images at 1.5× device scale, JPEG 86** (`scripts/shrink.py` from the 2× captures). A 57-page guide lands under 10 MB; 2× originals doubled it for no visible gain in print.
+
+## Theme
+
+`theme` in the content module sets the tokens the CSS is written against: `accent`, `accentSoft`, `ink`, `ink2`, `muted`, `line`, `tip`, `tipLine`. Take them from the product's own design tokens; the accent is what makes the guide read as that product's, and the soft tint is used for the cover pill, the journey tiles and the part dividers, so pick one that stays legible under dark text.
 
 ## Build
 

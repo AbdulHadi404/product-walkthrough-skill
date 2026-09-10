@@ -8,6 +8,10 @@ const logo = `<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16
 
 export default {
   brand: 'Acme',
+  // The product's own colours, read from its design tokens (primary/accent,
+  // a soft tint of it, the ink). A guide in the template's indigo is a guide
+  // that looks like somebody else's product.
+  theme: { accent: '#4f46e5', accentSoft: '#eef2ff' },
   title: 'Acme Walkthrough for Companies',
   subtitle: 'A plain-language tour of every screen in your Acme workspace, from your first agent to reading the results.',
   audience: 'For company admins and their teams',
