@@ -22,7 +22,7 @@ Work through the phases in order. Each has a reference file with the detail — 
 | 1. Scope | Screen inventory per audience, example persona, list of states worth showing | this file, below |
 | 2. Environment | The product running locally in a safe mode, fixture logins, background jobs verified against the database | `references/environment-and-seeding.md` |
 | 3. Seed | A believable example company built through the API; cleanup + "make it live" scripts | `references/environment-and-seeding.md` |
-| 4. Capture | `scenes.mjs` on top of `scripts/capture-kit.mjs`; screenshots + callout manifest; contact sheet reviewed | `references/capture.md` |
+| 4. Capture | `scenes.mjs` on top of `scripts/capture-kit.mjs`; screenshots + callout manifest; contact sheet reviewed. Phone screens via adb (`templates/app-scenes.example.mjs`) and any other picture via `scripts/import-shots.mjs` | `references/capture.md` |
 | 5. Write | One content module per guide (`templates/content.example.mjs`) | `references/writing.md` |
 | 6. Build & review | PDFs via `scripts/build.mjs`, page contact sheets inspected, leaks grepped | `references/layout-and-review.md` |
 | 7. Deliver | PDFs sent to the user and committed with the generator + README | this file, below |
@@ -33,6 +33,7 @@ Two gates: **before writing**, every planned screen exists as a reviewed screens
 
 Read the navigation component and the route tree before anything else: the sidebar/menu is the table of contents the product already agreed on, and route guards tell you which audiences exist. Then decide:
 
+- **Shape.** A *product* guide is one section per screen, in menu order. A *setup* guide (admin panel → cloud console → build service → the result on a device) is one part per tool in the order the team performs them, may have a part without pictures when a tool cannot be captured, and ends with a checklist of the manual steps and the example's values (`references/writing.md`).
 - **Audiences → guides.** One guide per role that sees a different menu: typically *customers/companies* (client-safe), *platform admins* (may name providers and internals the admin manages), and a short *what a member sees* section inside the customer guide rather than a third guide.
 - **Screens and states.** For each menu item list the default screen plus the states a reader needs: a form open and filled with sensible values, a modal, a credentials banner, an empty state only when it is what a new user will meet, the list with real rows, dark mode once. A screen that changes what a user can do (permissions, a switch that stops all activity) gets its own page.
 - **The example persona.** A made-up company with a plausible name, sector and staff (avoid real customers' data). Everything seeded uses this persona so every screenshot tells one coherent story.
@@ -85,3 +86,8 @@ A stakeholder who has never seen the product should be able to open the customer
 - Feature switches that ship "off" in a fresh database (a platform-wide dialing switch) silently empty half the guide; check them in Phase 2.
 - Dev overlays (Next.js's `nextjs-portal`) render into screenshots; hide them with an injected style before every shot.
 - The same screenshot serves both guides only when both audiences see exactly the same thing; an admin acting inside a customer workspace has an extra switcher in the top bar, so capture it separately.
+- A full-page shot of a form beside a sidebar is squeezed to 4 pt labels in the PDF; capture the form's container with `clip:` instead.
+- Pagination follows the font that actually loaded (Google Fonts online vs. a narrower fallback offline). Review the sheets of the build you deliver.
+- Emulator captures: wait for a content label via `uiautomator dump`, never a fixed sleep — a swipe on a skeleton screen opens whatever is under the finger; portaled sheets are absent from the dump, tap them by coordinate; match labels loosely (Arabic ى/ي).
+- Third-party dashboards block injected scripts (CSP) and cannot be captured from inside the page; use a screenshot saved to disk, or write the part as steps and say so.
+- On Windows: `import()` of a bare `C:\` path fails (`pathToFileURL`), `pdftoppm` is usually missing (PyMuPDF instead), and `sharp` for `import-shots.mjs` ships prebuilt for 0.33+.

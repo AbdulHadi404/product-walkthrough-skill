@@ -22,6 +22,15 @@ await kit.close();
 
 Selector forms for callouts and clicks: `btn:Label` (button by exact text), `a:Label` (link by exact text), `text:Fragment` (puppeteer text selector, first match), anything else is CSS. Prefer stable hooks: `aria-label`, `name`, ids, exact button text. Avoid nth-child chains.
 
+### Clipping to an element
+
+`shot(page, name, { clip: '.chakra-container' })` captures just that element
+(plus `clipPad` px around it) instead of the viewport or the whole document.
+Use it for a form or a panel on a page with a sidebar: a full-page shot of a
+1400 px tall form is squeezed to 160 mm in the PDF and its labels drop to 4 pt;
+the clipped form fills the same height at readable size. Callout boxes are
+recorded relative to the clip, so the legend still lands on the right fields.
+
 ## Waiting correctly
 
 - `goto(page, path, text)` waits for `text` in `document.body.innerText`, **case-insensitively**, because `innerText` applies CSS `text-transform` — an uppercase table header or a capitalised tab never matches its source string exactly. If the text does not appear within 90 s it reloads once (first-compile stalls in dev servers) and waits again.
@@ -51,6 +60,35 @@ Use one browser context per audience so sessions never mix. The admin acting ins
 ## Order and side effects
 
 Capture in an order where each screen's side effects cannot appear in a later screen you want clean: CRM and history before test actions that create records; the users list before inviting the sample colleague; admin "create company" last in the admin run. Pre-run resets those side effects before the next capture.
+
+## Screens outside the browser
+
+Not every screen is a web page. Two more sources feed the same manifest
+through `scripts/import-shots.mjs` (`importShot({ name, from, crop, callouts })`
+re-encodes a PNG as JPEG, optionally crops it, and merges the entry by name):
+
+- **A mobile app on the Android emulator** — `templates/app-scenes.example.mjs`.
+  `adb exec-out screencap -p` for the picture, `adb shell input tap/swipe` to
+  drive, `adb emu geo fix` for locations, `pm clear` + `pm grant` for a clean
+  first launch with no permission dialogs, and the SystemUI demo mode for an
+  identical status bar on every shot. Wait on **content**, not time: poll
+  `uiautomator dump` for a label that only exists once data has loaded
+  (skeleton screens pass a fixed sleep and a swipe on a half-loaded page lands
+  on whatever is under the finger — it opened a search page instead of
+  scrolling). Portaled sheets and modals are often missing from the
+  accessibility dump; tap those by coordinate. Match labels loosely
+  (`includes`) — a button spelled "تخطى" on screen will never equal "تخطي".
+  For the app icon, open the drawer with `KEYCODE_ALL_APPS` (a swipe may not),
+  scroll to the letter and **crop to the rows around the app** so other
+  clients' apps on the developer's emulator never reach the guide; the
+  drawer's search shows web suggestions, so it is not a clean alternative.
+- **A third-party dashboard** (a build service, a cloud console). The page's
+  CSP usually blocks injected scripts and `data:` images, so DOM-to-image
+  tricks fail; the only truthful capture is a browser or desktop screenshot
+  saved to disk (browser tools with a `save_to_disk` option, or the user's own
+  Win+PrtScn into `Pictures\Screenshots`) imported with `importShot`. When
+  no screenshot can be taken, write that part as numbered steps with the real
+  values in a table and say so in the hand-off — never mock the dashboard.
 
 ## Review before writing
 

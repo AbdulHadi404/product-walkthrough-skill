@@ -8,12 +8,14 @@
 import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const S = path.resolve(process.env.WALKTHROUGH_WORK ?? '.work');
 const OUT_DIR = path.resolve(process.env.WALKTHROUGH_OUT ?? '.');
 const SHOTS = path.join(S, 'shots');
 const [, , contentPath, outBase] = process.argv;
-const doc = (await import(path.resolve(contentPath))).default;
+// A file URL, not a bare path: on Windows `import('C:\…')` is read as a URL with scheme "c:".
+const doc = (await import(pathToFileURL(path.resolve(contentPath)).href)).default;
 
 // The guide wears the product's colours, not the template's. `theme` in the
 // content module overrides any of these; the defaults are a neutral slate
@@ -39,6 +41,7 @@ const esc = (s) =>
 const md = (s) =>
   esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\[\[(.+?)\]\]/g, '<span class="ui">$1</span>');
 
 /** Chip markup inside raw HTML blocks (intro, extras, appendix). */
@@ -51,12 +54,9 @@ const imgData = (file) => {
   return `data:image/jpeg;base64,${buf.toString('base64')}`;
 };
 
-function figure(shot) {
-  const m = manifest[shot.name];
-  if (!m) {
-    console.warn('missing screenshot', shot.name);
-    return '';
-  }
+/** One framed image with its badges. `offset` shifts badge numbers when
+ *  several frames share a legend (a row of phone screens). */
+function frame(shot, m, offset = 0) {
   const badges = (shot.callouts ?? [])
     .map((label, i) => {
       const n = i + 1;
@@ -67,27 +67,68 @@ function figure(shot) {
       // at the very edge it hangs half outside the frame — the frame lets it.
       const cx = ((box.x / m.w) * 100).toFixed(2);
       const cy = (((box.y + Math.min(14, box.h / 2)) / m.h) * 100).toFixed(2);
-      return `<span class="badge" style="left:calc(${cx}% - 13px);top:${cy}%">${n}</span>`;
+      return `<span class="badge" style="left:calc(${cx}% - 13px);top:${cy}%">${n + offset}</span>`;
     })
     .join('');
-  const ratio = m.h / m.w;
-  const tall = ratio > 0.8;
-  const legend = (shot.callouts ?? []).length
-    ? `<ol class="legend${shot.callouts.length >= 7 ? ' legend-3' : ''}">${shot.callouts
-        .map((label, i) => {
-          const box = m.callouts.find((c) => c.n === i + 1);
-          if (!box) return '';
-          return `<li><span class="num">${i + 1}</span><span>${md(label)}</span></li>`;
-        })
-        .join('')}</ol>`
-    : '';
-  return `<figure class="shot${tall ? ' tall' : ''}">
-    <div class="frame" style="aspect-ratio:${m.w}/${m.h}">
+  // `height` (mm) pins the frame's height; with the aspect ratio that fixes
+  // its width too, which is what a row of phones or a picture that must
+  // leave room for its text needs.
+  const size = shot.height ? `height:${shot.height}mm;width:auto;` : '';
+  return `<div class="frame${shot.height ? ' fixed' : ''}" style="aspect-ratio:${m.w}/${m.h};${size}">
       <img src="${imgData(m.file)}" alt="${esc(shot.caption ?? shot.name)}">
       ${badges}
-    </div>
+    </div>`;
+}
+
+/** Legend lines for one or more shots, numbered continuously. */
+function legend(shots, ms) {
+  const items = [];
+  shots.forEach((shot, s) => {
+    const offset = shots.slice(0, s).reduce((n, x) => n + (x.callouts?.length ?? 0), 0);
+    (shot.callouts ?? []).forEach((label, i) => {
+      if (!ms[s].callouts.find((c) => c.n === i + 1)) return;
+      items.push(`<li><span class="num">${i + 1 + offset}</span><span>${md(label)}</span></li>`);
+    });
+  });
+  if (!items.length) return '';
+  return `<ol class="legend${items.length >= 7 ? ' legend-3' : ''}">${items.join('')}</ol>`;
+}
+
+function figure(shot) {
+  // A row of phone-shaped shots side by side: { row: [shot, shot, shot] }.
+  // Each keeps its own caption; badge numbers run on across the row and one
+  // legend sits under the row.
+  if (shot.row) {
+    const ms = shot.row.map((s) => manifest[s.name]);
+    const missing = shot.row.find((s, i) => !ms[i]);
+    if (missing) {
+      console.warn('missing screenshot', missing.name);
+      return '';
+    }
+    let offset = 0;
+    const cells = shot.row
+      .map((s, i) => {
+        const html = `<div class="cell">${frame(s, ms[i], offset)}${s.caption ? `<figcaption>${md(s.caption)}</figcaption>` : ''}</div>`;
+        offset += s.callouts?.length ?? 0;
+        return html;
+      })
+      .join('');
+    return `<figure class="shot row row-${shot.row.length}">
+    <div class="row">${cells}</div>
+    ${shot.caption ? `<figcaption class="row-caption">${md(shot.caption)}</figcaption>` : ''}
+    ${legend(shot.row, ms)}
+  </figure>`;
+  }
+  const m = manifest[shot.name];
+  if (!m) {
+    console.warn('missing screenshot', shot.name);
+    return '';
+  }
+  const tall = m.h / m.w > 0.8;
+  return `<figure class="shot${tall ? ' tall' : ''}">
+    ${frame(shot, m)}
     ${shot.caption ? `<figcaption>${md(shot.caption)}</figcaption>` : ''}
-    ${legend}
+    ${legend([shot], [m])}
   </figure>`;
 }
 
@@ -188,6 +229,19 @@ const html = `<!doctype html>
      layout fault this guards against. */
   figure.tall .frame { max-height:160mm; width:auto; max-width:100%; margin:0 auto; }
   figure.tall .frame img { max-height:160mm; width:auto; }
+  /* Phone screens in a row. The frame gets a definite height, and with the
+     aspect ratio that fixes its width: an auto-width flex child with a
+     percent-width image collapses to nothing. Three 9:16 phones at 98mm are
+     58mm wide each, which fits the 178mm text width with the gaps. */
+  figure.row .row { display:flex; justify-content:center; gap:5mm; align-items:flex-start; }
+  figure.row .cell { display:flex; flex-direction:column; align-items:center; }
+  figure.row .frame { width:auto; margin:0; height:98mm; }
+  figure.row-2 .frame { height:122mm; }
+  figure.row .frame img, .frame.fixed img { height:100%; width:auto; }
+  figure.row .cell figcaption { max-width:58mm; }
+  figure.row-2 .cell figcaption { max-width:80mm; }
+  figure.row .row-caption { margin-top:8px; }
+  .frame.fixed { margin:0 auto; }
   .badge { position:absolute; transform:translate(-50%,-50%); width:22px; height:22px; border-radius:50%; background:var(--accent); color:#fff; font-weight:800; font-size:11px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2.5px #fff, 0 2px 6px rgba(0,0,0,.35); }
   figcaption { font-size:9.5pt; color:var(--muted); margin-top:5px; text-align:center; }
   ol.legend { list-style:none; padding:0; margin:8px 0 0; display:grid; grid-template-columns:1fr 1fr; gap:4px 18px; }
@@ -209,6 +263,10 @@ const html = `<!doctype html>
   .glossary dt { font-weight:700; margin-top:.6em; }
   .glossary dd { margin:0 0 .2em; color:var(--ink2); }
   .callout { border-left:4px solid var(--accent); background:var(--accent-soft); padding:8px 12px; border-radius:0 8px 8px 0; margin:10px 0; }
+  /* Commands a reader copies into a terminal: one per line, wrapped rather than clipped. */
+  pre.cmd { background:#0f172a; color:#e2e8f0; font:9.5pt/1.5 Consolas, "SF Mono", Menlo, monospace; padding:10px 14px; border-radius:8px; white-space:pre-wrap; word-break:break-all; margin:8px 0 12px; break-inside:avoid; }
+  pre.cmd b { color:#fdba74; font-weight:600; }
+  code { font:.92em Consolas, "SF Mono", Menlo, monospace; background:#f1f5f9; padding:.05em .35em; border-radius:4px; }
 </style></head><body>
 <section class="cover">
   <div>

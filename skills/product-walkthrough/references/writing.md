@@ -38,6 +38,22 @@ Callout labels in the content module must follow the badge numbering in the scen
 - **Parts** follow the menu order that the reader's role sees, each opened by a divider page with a one-sentence summary and the list of sections.
 - **Appendix**: glossary (every term defined in the guide, alphabetical, one line each) and quick answers (six to eight "Something looks wrong" questions with two-sentence answers).
 
+## Setup guides (several tools, one journey)
+
+A guide that walks a team through *setting something up* — an admin panel,
+then a cloud console, then a build service, then the result on a phone — is
+still one journey and one part per tool, in the order the team performs them.
+Two differences from a screen-by-screen product guide:
+
+- **A part without screenshots is allowed** when the tool cannot be captured
+  (a third-party dashboard the capture cannot reach). Write it as numbered
+  steps with the *exact labels* the reader will click, a table of the real
+  values used in the example (ids, names, colours), and commands in a dark
+  box. Say in the hand-off that the part has no pictures and why.
+- **Close with a checklist**: one row per manual step, where it happens and
+  who does it, plus a table of the example's values. That page is what a
+  developer opens the second time.
+
 ## Per-audience rules
 
 - **Customer / company guide**: no third-party provider names, no internal system names, no infrastructure words (server, database, API, migration, deploy). Describe what the product does for them; the admin's tools are "your platform administrator". Verify with a text grep before delivery.

@@ -14,6 +14,7 @@ It was extracted from producing a 57-page customer guide and a 19-page platform-
 - **Capture** with `capture-kit.mjs`: one browser context per audience, case-insensitive text waits, retries for simulated failures, callout boxes recorded into a manifest after every shot, one-time passwords masked before the picture.
 - **Write** one content module per guide following a fixed page template: summary, screenshot + legend, "How to do it", "Good to know", status tables; glossary and quick answers at the back; customer guides free of internal and third-party names.
 - **Build** A4 PDFs with headless Chrome (`build.mjs`), keep them light (`shrink.py`), and **review** every page on contact sheets (`contact-sheet.py`) until no page is a spilled tips box or a split table; grep the text for leaks before delivering.
+- **Beyond the browser**: phone screens from the Android emulator through adb (`templates/app-scenes.example.mjs`), any other picture through `import-shots.mjs`, rows of phone screens and clipped form captures in the layout, and a *setup guide* shape (admin panel → cloud console → build service → device) for cross-tool walkthroughs.
 
 ## Install
 
@@ -35,7 +36,7 @@ claude plugin install product-walkthrough@product-walkthrough-skill
 
 Restart the session (or open a new one) so the skill is listed.
 
-Runtime needs on the machine that captures: Node 20+, `puppeteer` (installed by the generator's `package.json`), Python 3 with Pillow, and poppler (`pdftoppm`, `pdftotext`) for the review loop.
+Runtime needs on the machine that captures: Node 20+, `puppeteer` and `sharp` (installed by the generator's `package.json`), Python 3 with Pillow, and poppler (`pdftoppm`, `pdftotext`) or PyMuPDF for the review loop. Phone captures need `adb` and a running emulator.
 
 ## Use
 

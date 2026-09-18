@@ -129,13 +129,32 @@ export async function createKit({
 
   /** Screenshot + callout boxes → manifest. `full` captures the whole document;
    *  `focus` (a selector) scrolls that element to the middle of the viewport
-   *  first, for a viewport-sized shot of something below the fold. */
-  async function shot(page, name, { full = false, callouts = [], focus = null } = {}) {
+   *  first, for a viewport-sized shot of something below the fold; `clip` (a
+   *  selector) captures just that element plus `clipPad` px around it — a
+   *  form without the sidebar stays readable where a full-page shot would be
+   *  squeezed to fit the page. */
+  async function shot(page, name, { full = false, callouts = [], focus = null, clip = null, clipPad = 12 } = {}) {
     await page.addStyleTag({ content: hideCss }).catch(() => {});
-    const target = focus && !full ? await resolve(page, focus) : null;
+    const target = focus && !full && !clip ? await resolve(page, focus) : null;
     if (target) await target.evaluate((el) => el.scrollIntoView({ block: 'center' }));
     else await page.evaluate(() => window.scrollTo(0, 0));
     await sleep(250);
+    let clipBox = null;
+    if (clip) {
+      const h = await resolve(page, clip);
+      if (!h) console.warn(`  ! clip missing on ${name}: ${clip}`);
+      else {
+        clipBox = await h.evaluate((el, pad) => {
+          const r = el.getBoundingClientRect();
+          return {
+            x: Math.max(0, r.left + window.scrollX - pad),
+            y: Math.max(0, r.top + window.scrollY - pad),
+            width: Math.round(r.width + 2 * pad),
+            height: Math.round(r.height + 2 * pad),
+          };
+        }, clipPad);
+      }
+    }
     const boxes = [];
     for (const c of callouts) {
       const h = await resolve(page, c.sel);
@@ -144,27 +163,39 @@ export async function createKit({
         continue;
       }
       // Viewport coordinates for a viewport shot; document coordinates for a
-      // full-page one (which is always taken from the top).
-      const b = await h.evaluate((el, full) => {
+      // full-page or clipped one (both are taken from the top), shifted by
+      // the clip origin so they land inside the clipped image.
+      const b = await h.evaluate((el, doc) => {
         const r = el.getBoundingClientRect();
         return {
-          x: r.left + (full ? window.scrollX : 0),
-          y: r.top + (full ? window.scrollY : 0),
+          x: r.left + (doc ? window.scrollX : 0),
+          y: r.top + (doc ? window.scrollY : 0),
           w: r.width,
           h: r.height,
         };
-      }, full);
+      }, full || !!clipBox);
+      if (clipBox) {
+        b.x -= clipBox.x;
+        b.y -= clipBox.y;
+      }
       boxes.push({ n: c.n, ...b });
     }
     const file = `${name}.jpg`;
-    await page.screenshot({ path: path.join(shotsDir, file), type: 'jpeg', quality: jpegQuality, fullPage: full });
-    const dims = await page.evaluate(
-      (full) => ({
-        w: window.innerWidth,
-        h: full ? document.documentElement.scrollHeight : window.innerHeight,
-      }),
-      full,
-    );
+    await page.screenshot({
+      path: path.join(shotsDir, file),
+      type: 'jpeg',
+      quality: jpegQuality,
+      ...(clipBox ? { clip: clipBox, captureBeyondViewport: true } : { fullPage: full }),
+    });
+    const dims = clipBox
+      ? { w: clipBox.width, h: clipBox.height }
+      : await page.evaluate(
+          (full) => ({
+            w: window.innerWidth,
+            h: full ? document.documentElement.scrollHeight : window.innerHeight,
+          }),
+          full,
+        );
     const entry = { name, file, ...dims, callouts: boxes };
     // Read-merge-write, not write-from-memory: several kits (a laptop, a
     // phone, a tablet) can share one shots directory, and each must add to
